@@ -308,39 +308,61 @@ function toPayload(formData) {
 }
 
 async function loadItems() {
-  const response = await fetch(buildApiUrl(API_ACTIONS.list), { method: "GET" });
-  if (!response.ok) {
-    throw new Error(`Failed to load items. HTTP ${response.status}`);
-  }
+  try {
+    const url = buildApiUrl(API_ACTIONS.list);
+    console.log("Loading items from:", url);
+    const response = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load items. HTTP ${response.status}`);
+    }
 
-  const data = await response.json();
-  if (!Array.isArray(data)) {
-    state.items = [];
-    return;
-  }
+    const data = await response.json();
+    console.log("Loaded data:", data);
+    if (!Array.isArray(data)) {
+      state.items = [];
+      return;
+    }
 
-  state.items = data.map(normalizeItem);
+    state.items = data.map(normalizeItem);
+  } catch (error) {
+    console.error("Error loading items:", error);
+    throw error;
+  }
 }
 
 async function postAction(action, payload) {
-  const response = await fetch(buildApiUrl(action), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const url = buildApiUrl(action);
+    console.log("Posting action:", action, "to:", url, "payload:", payload);
+    const response = await fetch(url, {
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Save failed. HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Save failed. HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("Response:", result);
+    if (result.status !== "ok") {
+      throw new Error(result.message || "Unable to save item");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error in postAction:", error);
+    throw error;
   }
-
-  const result = await response.json();
-  if (result.status !== "ok") {
-    throw new Error(result.message || "Unable to save item");
-  }
-
-  return result;
 }
 
 async function saveItem(payload) {
