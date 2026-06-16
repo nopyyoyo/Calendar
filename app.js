@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwfTyMtwQwqq-cRrMsKT1XmNe2LXa0VhZF1zZxWLEN6rxQpQhzNrfxf7_IVOWCBDG-N/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwuvrL3ysyMBHV-UXCbhGlhWWtU62R1ki8sIQOLWjomctfI5JV9rxVDnUOrTko3mNR1/exec";
 const API_ACTIONS = {
   list: "list",
   add: "add",
