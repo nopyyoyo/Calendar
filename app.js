@@ -1,6 +1,7 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbzyfLw3h84nNntWPeYkZoszljxBDTLf1GUip9e6njKOJC8Wcz1GHR5iwr11CrNLmm1M/exec";
 const API_ACTIONS = {
   list: "list",
+  persons: "persons",
   add: "add",
   update: "update",
   delete: "delete",
@@ -9,6 +10,8 @@ const API_ACTIONS = {
 const state = {
   currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   items: [],
+  persons: [],
+  personThemeMap: new Map(),
   selectedItem: null,
   formMode: "add",
   editingRowId: null,
@@ -48,6 +51,15 @@ const saveBackBtn = document.getElementById("saveBackBtn");
 const saveMoreBtn = document.getElementById("saveMoreBtn");
 const formMessage = document.getElementById("formMessage");
 const dateInput = document.getElementById("dateInput");
+const personOptions = document.getElementById("personOptions");
+
+const PERSON_THEME_STYLES = {
+  blue: { bg: "#cfe8ff", text: "#173b6b", border: "#9cc7f5" },
+  pink: { bg: "#ffd8eb", text: "#6a1f49", border: "#f5abc9" },
+  red: { bg: "#ffd9d4", text: "#6b1f1f", border: "#f2aba0" },
+  green: { bg: "#d9f1d8", text: "#1f5534", border: "#a8d6a7" },
+  orange: { bg: "#ffe2c4", text: "#704214", border: "#f1bf8b" },
+};
 
 function formatDateKey(dateObj) {
   const year = dateObj.getFullYear();
@@ -58,6 +70,20 @@ function formatDateKey(dateObj) {
 
 function safeString(value) {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
+}
+
+function splitPersons(value) {
+  return safeString(value)
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function joinPersons(persons) {
+  return persons
+    .map((person) => safeString(person))
+    .filter(Boolean)
+    .join(", ");
 }
 
 function normalizeItem(row) {
@@ -76,6 +102,36 @@ function buildApiUrl(action) {
   const url = new URL(API_URL);
   url.searchParams.set("action", action);
   return url.toString();
+}
+
+function getThemeByPerson(personName) {
+  return state.personThemeMap.get(safeString(personName).toLowerCase()) || "";
+}
+
+function getDefaultTheme() {
+  return getThemeByPerson("Default") || "Orange";
+}
+
+function getItemTheme(item) {
+  const people = splitPersons(item.person);
+
+  if (people.length !== 1) {
+    return getDefaultTheme();
+  }
+
+  return getThemeByPerson(people[0]) || getDefaultTheme();
+}
+
+function themeStyle(themeName) {
+  const key = safeString(themeName).toLowerCase();
+  return PERSON_THEME_STYLES[key] || PERSON_THEME_STYLES.orange;
+}
+
+function applyThemeToElement(element, themeName) {
+  const style = themeStyle(themeName);
+  element.style.backgroundColor = style.bg;
+  element.style.color = style.text;
+  element.style.borderColor = style.border;
 }
 
 function itemsByDate() {
@@ -235,6 +291,7 @@ function renderCalendar() {
       btn.className = "item-chip";
       const compactItem = compactItemText(item.item);
       btn.textContent = compactItem;
+      applyThemeToElement(btn, getItemTheme(item));
       btn.addEventListener("click", () => openDetail(item));
       itemsWrap.appendChild(btn);
     }
@@ -275,6 +332,7 @@ function openDayList(dateKey, dayItems) {
     const prefix = document.createElement("span");
     prefix.className = "day-list-item-time";
     prefix.textContent = time ? `${time} ` : "";
+    applyThemeToElement(row, getItemTheme(item));
     row.appendChild(prefix);
     row.appendChild(document.createTextNode(safeString(item.item) || "(no item)"));
     row.addEventListener("click", () => openDetail(item));
@@ -303,8 +361,38 @@ function toPayload(formData) {
     time: safeString(formData.get("time")),
     item: safeString(formData.get("item")),
     description: safeString(formData.get("description")),
-    person: safeString(formData.get("person")),
+    person: joinPersons(getSelectedPersons()),
   };
+}
+
+async function loadPersons() {
+  const url = buildApiUrl(API_ACTIONS.persons);
+  const response = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    credentials: "omit",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load persons. HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    state.persons = [];
+    state.personThemeMap = new Map();
+    return;
+  }
+
+  const persons = data
+    .map((row) => ({
+      person: safeString(row.person),
+      colorTheme: safeString(row.colorTheme),
+    }))
+    .filter((row) => row.person);
+
+  state.persons = persons;
+  state.personThemeMap = new Map(persons.map((row) => [row.person.toLowerCase(), row.colorTheme]));
 }
 
 async function loadItems() {
@@ -377,6 +465,49 @@ async function deleteItem(rowId) {
 function clearForm() {
   formEl.reset();
   dateInput.value = formatDateKey(new Date());
+  setSelectedPersons([]);
+}
+
+function renderPersonOptions() {
+  personOptions.innerHTML = "";
+
+  if (!state.persons.length) {
+    const empty = document.createElement("p");
+    empty.className = "person-options-empty";
+    empty.textContent = "No person options available.";
+    personOptions.appendChild(empty);
+    return;
+  }
+
+  for (const row of state.persons) {
+    const option = document.createElement("label");
+    option.className = "person-option";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "person";
+    input.value = row.person;
+
+    const text = document.createElement("span");
+    text.textContent = row.person;
+
+    option.appendChild(input);
+    option.appendChild(text);
+    personOptions.appendChild(option);
+  }
+}
+
+function getSelectedPersons() {
+  return Array.from(formEl.querySelectorAll('input[name="person"]:checked')).map((el) => safeString(el.value));
+}
+
+function setSelectedPersons(persons) {
+  const selected = new Set(persons.map((person) => safeString(person).toLowerCase()));
+  const options = formEl.querySelectorAll('input[name="person"]');
+
+  options.forEach((option) => {
+    option.checked = selected.has(safeString(option.value).toLowerCase());
+  });
 }
 
 function fillForm(item) {
@@ -384,13 +515,11 @@ function fillForm(item) {
   const timeField = formEl.elements.namedItem("time");
   const itemField = formEl.elements.namedItem("item");
   const descriptionField = formEl.elements.namedItem("description");
-  const personField = formEl.elements.namedItem("person");
-
   dateField.value = item.date || "";
   timeField.value = item.time || "";
   itemField.value = item.item || "";
   descriptionField.value = item.description || "";
-  personField.value = item.person || "";
+  setSelectedPersons(splitPersons(item.person));
 }
 
 function setFormMode(mode) {
@@ -413,15 +542,17 @@ function setMessage(message, isError = false) {
   formMessage.style.color = isError ? "#b42318" : "#7a4f36";
 }
 
-function openForm() {
+async function openForm() {
   state.editingRowId = null;
   setFormMode("add");
+  await loadPersons();
+  renderPersonOptions();
   clearForm();
   setMessage("");
   showView("form");
 }
 
-function openEditForm(item) {
+async function openEditForm(item) {
   const normalized = normalizeItem(item);
   if (!Number.isFinite(normalized.rowId)) {
     alert("This item cannot be edited because rowId is missing.");
@@ -430,6 +561,8 @@ function openEditForm(item) {
 
   state.editingRowId = normalized.rowId;
   setFormMode("edit");
+  await loadPersons();
+  renderPersonOptions();
   fillForm(normalized);
   setMessage("");
   showView("form");
@@ -495,7 +628,13 @@ async function removeSelectedItem() {
 }
 
 function registerEvents() {
-  homeAddBtn.addEventListener("click", openForm);
+  homeAddBtn.addEventListener("click", async () => {
+    try {
+      await openForm();
+    } catch (error) {
+      setMessage(error.message || "Could not load person options.", true);
+    }
+  });
 
   prevMonthBtn.addEventListener("click", () => {
     state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() - 1, 1);
@@ -511,11 +650,15 @@ function registerEvents() {
     showView("calendar");
   });
 
-  detailEditBtn.addEventListener("click", () => {
+  detailEditBtn.addEventListener("click", async () => {
     if (!state.selectedItem) {
       return;
     }
-    openEditForm(state.selectedItem);
+    try {
+      await openEditForm(state.selectedItem);
+    } catch (error) {
+      alert(error.message || "Could not open edit form.");
+    }
   });
 
   detailDeleteBtn.addEventListener("click", async () => {
@@ -544,9 +687,11 @@ async function init() {
   renderWeekdays();
   registerEvents();
   setFormMode("add");
-  clearForm();
 
   try {
+    await loadPersons();
+    renderPersonOptions();
+    clearForm();
     await loadItems();
   } catch (error) {
     setMessage(`Could not load data: ${error.message}`, true);

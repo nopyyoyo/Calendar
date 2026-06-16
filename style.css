@@ -229,6 +229,38 @@ label {
   margin-top: 8px;
 }
 
+.person-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid #e4c4aa;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fffdf9;
+}
+
+.person-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.person-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.person-options-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 input,
 textarea {
   border: 1px solid #e4c4aa;
@@ -358,5 +390,9 @@ textarea:focus {
   .detail-row {
     grid-template-columns: 90px 1fr;
     font-size: 0.92rem;
+  }
+
+  .person-options {
+    grid-template-columns: 1fr;
   }
 }

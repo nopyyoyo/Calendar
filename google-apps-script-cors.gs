@@ -1,7 +1,15 @@
 const SPREADSHEET_ID = "1jisnmOm3alIrL1fRPH_QEbB39jhaXIwhRYGhAx64jvw";
 
+function getSpreadsheet_() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
 function getSheet_() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID).getSheets()[0];
+  return getSpreadsheet_().getSheets()[0];
+}
+
+function getPersonSheet_() {
+  return getSpreadsheet_().getSheetByName("Person");
 }
 
 function doGet(e) {
@@ -19,6 +27,10 @@ function handleRequest(method, e) {
 
       if (action === "list") {
         return json_(listItems_());
+      }
+
+      if (action === "persons") {
+        return json_(listPersons_());
       }
 
       return json_({
@@ -62,6 +74,34 @@ function handleRequest(method, e) {
       message: err.toString(),
     });
   }
+}
+
+function listPersons_() {
+  const personSheet = getPersonSheet_();
+
+  if (!personSheet) {
+    return [];
+  }
+
+  const lastRow = personSheet.getLastRow();
+
+  if (lastRow <= 1) {
+    return [];
+  }
+
+  // Person tab columns: A=Person, B=Color Theme
+  const values = personSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+
+  return values
+    .map(function (r) {
+      return {
+        person: String(r[0] || "").trim(),
+        colorTheme: String(r[1] || "").trim(),
+      };
+    })
+    .filter(function (entry) {
+      return entry.person !== "";
+    });
 }
 
 function listItems_() {
