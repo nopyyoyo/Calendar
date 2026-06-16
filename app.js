@@ -51,6 +51,7 @@ const saveBackBtn = document.getElementById("saveBackBtn");
 const saveMoreBtn = document.getElementById("saveMoreBtn");
 const formMessage = document.getElementById("formMessage");
 const dateInput = document.getElementById("dateInput");
+const timeInput = document.getElementById("timeInput");
 const personOptions = document.getElementById("personOptions");
 
 const PERSON_THEME_STYLES = {
@@ -70,6 +71,37 @@ function formatDateKey(dateObj) {
 
 function safeString(value) {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
+}
+
+function formatTimeHHMM(value) {
+  const raw = safeString(value);
+  if (!raw) {
+    return "";
+  }
+
+  const hhmmMatch = raw.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (hhmmMatch) {
+    const hour = Number(hhmmMatch[1]);
+    const minute = hhmmMatch[2];
+    if (Number.isFinite(hour) && hour >= 0 && hour <= 23) {
+      return `${String(hour).padStart(2, "0")}:${minute}`;
+    }
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const hour = String(parsed.getHours()).padStart(2, "0");
+    const minute = String(parsed.getMinutes()).padStart(2, "0");
+    return `${hour}:${minute}`;
+  }
+
+  return raw;
+}
+
+function defaultHourTime() {
+  const now = new Date();
+  const hour = String(now.getHours()).padStart(2, "0");
+  return `${hour}:00`;
 }
 
 function splitPersons(value) {
@@ -328,7 +360,7 @@ function openDayList(dateKey, dayItems) {
     row.type = "button";
     row.className = "day-list-item";
 
-    const time = safeString(item.time);
+    const time = formatTimeHHMM(item.time);
     const prefix = document.createElement("span");
     prefix.className = "day-list-item-time";
     prefix.textContent = time ? `${time} ` : "";
@@ -345,7 +377,7 @@ function openDayList(dateKey, dayItems) {
 function openDetail(item) {
   state.selectedItem = normalizeItem(item);
   detailDate.textContent = state.selectedItem.date || "-";
-  detailTime.textContent = state.selectedItem.time || "-";
+  detailTime.textContent = formatTimeHHMM(state.selectedItem.time) || "-";
   detailItem.textContent = state.selectedItem.item || "-";
   detailDescription.textContent = state.selectedItem.description || "-";
   detailPerson.textContent = state.selectedItem.person || "-";
@@ -465,6 +497,7 @@ async function deleteItem(rowId) {
 function clearForm() {
   formEl.reset();
   dateInput.value = formatDateKey(new Date());
+  timeInput.value = defaultHourTime();
   setSelectedPersons([]);
 }
 
@@ -479,7 +512,19 @@ function renderPersonOptions() {
     return;
   }
 
-  for (const row of state.persons) {
+  const selectablePersons = state.persons.filter(
+    (row) => safeString(row.person).toLowerCase() !== "default"
+  );
+
+  if (!selectablePersons.length) {
+    const empty = document.createElement("p");
+    empty.className = "person-options-empty";
+    empty.textContent = "No person options available.";
+    personOptions.appendChild(empty);
+    return;
+  }
+
+  for (const row of selectablePersons) {
     const option = document.createElement("label");
     option.className = "person-option";
 
@@ -516,7 +561,7 @@ function fillForm(item) {
   const itemField = formEl.elements.namedItem("item");
   const descriptionField = formEl.elements.namedItem("description");
   dateField.value = item.date || "";
-  timeField.value = item.time || "";
+  timeField.value = formatTimeHHMM(item.time);
   itemField.value = item.item || "";
   descriptionField.value = item.description || "";
   setSelectedPersons(splitPersons(item.person));
