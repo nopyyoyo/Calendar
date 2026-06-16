@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwuvrL3ysyMBHV-UXCbhGlhWWtU62R1ki8sIQOLWjomctfI5JV9rxVDnUOrTko3mNR1/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzyfLw3h84nNntWPeYkZoszljxBDTLf1GUip9e6njKOJC8Wcz1GHR5iwr11CrNLmm1M/exec";
 const API_ACTIONS = {
   list: "list",
   add: "add",
@@ -342,9 +342,6 @@ async function postAction(action, payload) {
       method: "POST",
       mode: "cors",
       credentials: "omit",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     });
 
