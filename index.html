@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <h1 id="pageTitle">Family Calendar</h1>
+      <button id="homeAddBtn" class="btn btn-primary" type="button">Add item</button>
+    </header>
+
+    <main>
+      <section id="calendarView" class="view">
+        <div class="month-nav">
+          <button id="prevMonthBtn" class="btn btn-ghost" type="button" aria-label="Previous month">&#9664;</button>
+          <h2 id="monthLabel"></h2>
+          <button id="nextMonthBtn" class="btn btn-ghost" type="button" aria-label="Next month">&#9654;</button>
+        </div>
+
+        <div class="weekday-row" id="weekdayRow"></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <section id="detailView" class="view hidden">
+        <div class="card detail-card">
+          <h2>Item Details</h2>
+          <div class="detail-row"><span>Date</span><strong id="detailDate">-</strong></div>
+          <div class="detail-row"><span>Time</span><strong id="detailTime">-</strong></div>
+          <div class="detail-row"><span>Item</span><strong id="detailItem">-</strong></div>
+          <div class="detail-row"><span>Description</span><strong id="detailDescription">-</strong></div>
+          <div class="detail-row"><span>Person</span><strong id="detailPerson">-</strong></div>
+          <div class="detail-actions">
+            <button id="detailEditBtn" class="btn btn-accent" type="button">Edit</button>
+            <button id="detailDeleteBtn" class="btn btn-danger" type="button">Delete</button>
+            <button id="backToCalendarBtn" class="btn btn-primary" type="button">Back to calendar</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="dayListView" class="view hidden">
+        <div class="card detail-card">
+          <h2 id="dayListTitle">Items</h2>
+          <div id="dayListBody" class="day-list-body"></div>
+          <button id="dayListBackBtn" class="btn btn-primary" type="button">Back to calendar</button>
+        </div>
+      </section>
+
+      <section id="formView" class="view hidden">
+        <form id="itemForm" class="card form-card">
+          <h2 id="formTitle">Add Family Item</h2>
+
+          <label for="dateInput">Date</label>
+          <input id="dateInput" name="date" type="date" required />
+
+          <label for="timeInput">Time</label>
+          <input id="timeInput" name="time" type="time" required />
+
+          <label for="itemInput">Item</label>
+          <input id="itemInput" name="item" type="text" maxlength="80" placeholder="Birthday dinner" required />
+
+          <label for="descriptionInput">Description</label>
+          <textarea id="descriptionInput" name="description" rows="3" maxlength="280" placeholder="Where and what to prepare"></textarea>
+
+          <label for="personInput">Person</label>
+          <input id="personInput" name="person" type="text" maxlength="60" placeholder="Mom, Dad, Kids" required />
+
+          <div class="form-actions">
+            <button id="saveBackBtn" class="btn btn-primary" type="submit">Save and back to calendar</button>
+            <button id="saveMoreBtn" class="btn btn-accent" type="button">Save and add more item</button>
+            <button id="cancelFormBtn" class="btn btn-ghost" type="button">Cancel</button>
+          </div>
+
+          <p id="formMessage" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
