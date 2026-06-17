@@ -107,13 +107,13 @@ function listPersons_() {
 function listItems_() {
   const sheet = getSheet_();
   const lastRow = sheet.getLastRow();
-  const lastCol = Math.max(sheet.getLastColumn(), 5);
+  const lastCol = Math.max(sheet.getLastColumn(), 7);
 
   if (lastRow <= 1) {
     return [];
   }
 
-  // Columns: A=date, B=time, C=item, D=description, E=person
+  // Columns: A=date, B=time, C=item, D=description, E=person, F=dateTo, G=timeTo
   const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
   const data = values.map(function (r, i) {
@@ -126,6 +126,15 @@ function listItems_() {
       dateStr = String(rawDate || "").trim();
     }
 
+    const rawDateTo = r[5];
+    let dateToStr = "";
+
+    if (Object.prototype.toString.call(rawDateTo) === "[object Date]" && !isNaN(rawDateTo)) {
+      dateToStr = Utilities.formatDate(rawDateTo, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    } else {
+      dateToStr = String(rawDateTo || "").trim();
+    }
+
     return {
       rowId: i + 2,
       date: dateStr,
@@ -133,6 +142,8 @@ function listItems_() {
       item: String(r[2] || "").trim(),
       description: String(r[3] || "").trim(),
       person: String(r[4] || "").trim(),
+      dateTo: dateToStr,
+      timeTo: String(r[6] || "").trim(),
     };
   });
 
@@ -148,6 +159,8 @@ function addItem_(data) {
     data.item || "",
     data.description || "",
     data.person || "",
+    data.dateTo || "",
+    data.timeTo || "",
   ]);
 }
 
@@ -159,12 +172,14 @@ function updateItem_(data) {
     throw new Error("Invalid rowId");
   }
 
-  sheet.getRange(rowId, 1, 1, 5).setValues([[
+  sheet.getRange(rowId, 1, 1, 7).setValues([[
     data.date || "",
     data.time || "",
     data.item || "",
     data.description || "",
     data.person || "",
+    data.dateTo || "",
+    data.timeTo || "",
   ]]);
 }
 

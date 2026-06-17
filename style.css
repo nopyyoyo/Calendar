@@ -65,6 +65,33 @@ body {
   color: #a15431;
 }
 
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #fffdf9;
+  border: 1px solid #e4c4aa;
+  border-radius: 10px;
+}
+
+.filter-bar label {
+  margin: 0;
+  font-weight: 700;
+  color: #7f5139;
+}
+
+.person-filter-select {
+  padding: 8px 10px;
+  border: 1px solid #e4c4aa;
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .weekday-row,
 .calendar-grid {
   display: grid;
@@ -221,6 +248,23 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.date-range-group,
+.time-range-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  margin: 0;
 }
 
 label {

@@ -24,6 +24,13 @@
           <button id="nextMonthBtn" class="btn btn-ghost" type="button" aria-label="Next month">&#9654;</button>
         </div>
 
+        <div class="filter-bar">
+          <label for="personFilterSelect">Filter by person:</label>
+          <select id="personFilterSelect" class="person-filter-select">
+            <option value="">All person</option>
+          </select>
+        </div>
+
         <div class="weekday-row" id="weekdayRow"></div>
         <div id="calendarGrid" class="calendar-grid"></div>
       </section>
@@ -32,7 +39,9 @@
         <div class="card detail-card">
           <h2>Item Details</h2>
           <div class="detail-row"><span>Date</span><strong id="detailDate">-</strong></div>
+          <div class="detail-row"><span>Date To</span><strong id="detailDateTo">-</strong></div>
           <div class="detail-row"><span>Time</span><strong id="detailTime">-</strong></div>
+          <div class="detail-row"><span>Time To</span><strong id="detailTimeTo">-</strong></div>
           <div class="detail-row"><span>Item</span><strong id="detailItem">-</strong></div>
           <div class="detail-row"><span>Description</span><strong id="detailDescription">-</strong></div>
           <div class="detail-row"><span>Person</span><strong id="detailPerson">-</strong></div>
@@ -56,11 +65,27 @@
         <form id="itemForm" class="card form-card">
           <h2 id="formTitle">Add Family Item</h2>
 
-          <label for="dateInput">Date</label>
-          <input id="dateInput" name="date" type="date" required />
+          <div class="date-range-group">
+            <div class="form-field">
+              <label for="dateInput">Date From</label>
+              <input id="dateInput" name="date" type="date" required />
+            </div>
+            <div class="form-field">
+              <label for="dateToInput">Date To</label>
+              <input id="dateToInput" name="dateTo" type="date" />
+            </div>
+          </div>
 
-          <label for="timeInput">Time</label>
-          <input id="timeInput" name="time" type="time" required />
+          <div class="time-range-group">
+            <div class="form-field">
+              <label for="timeInput">Time From</label>
+              <input id="timeInput" name="time" type="time" />
+            </div>
+            <div class="form-field">
+              <label for="timeToInput">Time To</label>
+              <input id="timeToInput" name="timeTo" type="time" />
+            </div>
+          </div>
 
           <label for="itemInput">Item</label>
           <input id="itemInput" name="item" type="text" maxlength="80" placeholder="Birthday dinner" required />

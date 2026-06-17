@@ -15,6 +15,7 @@ const state = {
   selectedItem: null,
   formMode: "add",
   editingRowId: null,
+  selectedPersonFilter: "",
 };
 
 const views = {
@@ -39,6 +40,8 @@ const cancelFormBtn = document.getElementById("cancelFormBtn");
 
 const detailDate = document.getElementById("detailDate");
 const detailTime = document.getElementById("detailTime");
+const detailDateTo = document.getElementById("detailDateTo");
+const detailTimeTo = document.getElementById("detailTimeTo");
 const detailItem = document.getElementById("detailItem");
 const detailDescription = document.getElementById("detailDescription");
 const detailPerson = document.getElementById("detailPerson");
@@ -51,8 +54,11 @@ const saveBackBtn = document.getElementById("saveBackBtn");
 const saveMoreBtn = document.getElementById("saveMoreBtn");
 const formMessage = document.getElementById("formMessage");
 const dateInput = document.getElementById("dateInput");
+const dateToInput = document.getElementById("dateToInput");
 const timeInput = document.getElementById("timeInput");
+const timeToInput = document.getElementById("timeToInput");
 const personOptions = document.getElementById("personOptions");
+const personFilterSelect = document.getElementById("personFilterSelect");
 
 const PERSON_THEME_STYLES = {
   blue: { bg: "#cfe8ff", text: "#173b6b", border: "#9cc7f5" },
@@ -126,8 +132,10 @@ function normalizeItem(row) {
   const item = safeString(row.item || "");
   const description = safeString(row.description || "");
   const person = safeString(row.person || "");
+  const dateTo = safeString(row.dateTo || "");
+  const timeTo = safeString(row.timeTo || "");
 
-  return { rowId, date, time, item, description, person };
+  return { rowId, date, time, item, description, person, dateTo, timeTo };
 }
 
 function buildApiUrl(action) {
@@ -169,17 +177,41 @@ function applyThemeToElement(element, themeName) {
 function itemsByDate() {
   const map = new Map();
 
-  for (const raw of state.items) {
+  // Filter items by person if a filter is selected
+  const filteredItems = state.selectedPersonFilter
+    ? state.items.filter(item => {
+        const people = splitPersons(item.person);
+        return people.some(p => p.toLowerCase() === state.selectedPersonFilter.toLowerCase());
+      })
+    : state.items;
+
+  for (const raw of filteredItems) {
     const entry = normalizeItem(raw);
     if (!entry.date) {
       continue;
     }
 
+    // Add the main entry
     if (!map.has(entry.date)) {
       map.set(entry.date, []);
     }
-
     map.get(entry.date).push(entry);
+
+    // If there's a dateTo, add the item to all dates in the range
+    if (entry.dateTo && entry.dateTo !== entry.date) {
+      const startDate = new Date(entry.date + "T00:00:00");
+      const endDate = new Date(entry.dateTo + "T00:00:00");
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateKey = formatDateKey(d);
+        if (dateKey !== entry.date) {
+          if (!map.has(dateKey)) {
+            map.set(dateKey, []);
+          }
+          map.get(dateKey).push(entry);
+        }
+      }
+    }
   }
 
   for (const group of map.values()) {
@@ -192,11 +224,11 @@ function itemsByDate() {
       }
 
       if (!ta) {
-        return 1;
+        return -1;
       }
 
       if (!tb) {
-        return -1;
+        return 1;
       }
 
       return ta.localeCompare(tb);
@@ -377,7 +409,9 @@ function openDayList(dateKey, dayItems) {
 function openDetail(item) {
   state.selectedItem = normalizeItem(item);
   detailDate.textContent = state.selectedItem.date || "-";
+  detailDateTo.textContent = state.selectedItem.dateTo || "-";
   detailTime.textContent = formatTimeHHMM(state.selectedItem.time) || "-";
+  detailTimeTo.textContent = formatTimeHHMM(state.selectedItem.timeTo) || "-";
   detailItem.textContent = state.selectedItem.item || "-";
   detailDescription.textContent = state.selectedItem.description || "-";
   detailPerson.textContent = state.selectedItem.person || "-";
@@ -394,6 +428,8 @@ function toPayload(formData) {
     item: safeString(formData.get("item")),
     description: safeString(formData.get("description")),
     person: joinPersons(getSelectedPersons()),
+    dateTo: safeString(formData.get("dateTo")),
+    timeTo: safeString(formData.get("timeTo")),
   };
 }
 
@@ -497,7 +533,9 @@ async function deleteItem(rowId) {
 function clearForm() {
   formEl.reset();
   dateInput.value = formatDateKey(new Date());
-  timeInput.value = defaultHourTime();
+  timeInput.value = "";
+  dateToInput.value = "";
+  timeToInput.value = "";
   setSelectedPersons([]);
 }
 
@@ -542,6 +580,24 @@ function renderPersonOptions() {
   }
 }
 
+function renderPersonFilter() {
+  // Keep the "All person" option
+  while (personFilterSelect.children.length > 1) {
+    personFilterSelect.removeChild(personFilterSelect.lastChild);
+  }
+
+  const selectablePersons = state.persons.filter(
+    (row) => safeString(row.person).toLowerCase() !== "default"
+  );
+
+  for (const row of selectablePersons) {
+    const option = document.createElement("option");
+    option.value = row.person;
+    option.textContent = row.person;
+    personFilterSelect.appendChild(option);
+  }
+}
+
 function getSelectedPersons() {
   return Array.from(formEl.querySelectorAll('input[name="person"]:checked')).map((el) => safeString(el.value));
 }
@@ -558,10 +614,14 @@ function setSelectedPersons(persons) {
 function fillForm(item) {
   const dateField = formEl.elements.namedItem("date");
   const timeField = formEl.elements.namedItem("time");
+  const dateToField = formEl.elements.namedItem("dateTo");
+  const timeToField = formEl.elements.namedItem("timeTo");
   const itemField = formEl.elements.namedItem("item");
   const descriptionField = formEl.elements.namedItem("description");
   dateField.value = item.date || "";
   timeField.value = formatTimeHHMM(item.time);
+  dateToField.value = item.dateTo || "";
+  timeToField.value = formatTimeHHMM(item.timeTo);
   itemField.value = item.item || "";
   descriptionField.value = item.description || "";
   setSelectedPersons(splitPersons(item.person));
@@ -592,6 +652,7 @@ async function openForm() {
   setFormMode("add");
   await loadPersons();
   renderPersonOptions();
+  renderPersonFilter();
   clearForm();
   setMessage("");
   showView("form");
@@ -617,8 +678,8 @@ async function submitForm(mode) {
   const formData = new FormData(formEl);
   const payload = toPayload(formData);
 
-  if (!payload.date || !payload.time || !payload.item || !payload.person) {
-    setMessage("Please complete Date, Time, Item, and Person.", true);
+  if (!payload.date || !payload.item || !payload.person) {
+    setMessage("Please complete Date, Item, and Person.", true);
     return;
   }
 
@@ -691,6 +752,11 @@ function registerEvents() {
     renderCalendar();
   });
 
+  personFilterSelect.addEventListener("change", (event) => {
+    state.selectedPersonFilter = event.target.value;
+    renderCalendar();
+  });
+
   backToCalendarBtn.addEventListener("click", () => {
     showView("calendar");
   });
@@ -726,6 +792,18 @@ function registerEvents() {
   saveMoreBtn.addEventListener("click", async () => {
     await submitForm("more");
   });
+
+  timeInput.addEventListener("focus", (event) => {
+    if (!event.target.value) {
+      event.target.value = defaultHourTime();
+    }
+  });
+
+  timeToInput.addEventListener("focus", (event) => {
+    if (!event.target.value) {
+      event.target.value = defaultHourTime();
+    }
+  });
 }
 
 async function init() {
@@ -736,6 +814,7 @@ async function init() {
   try {
     await loadPersons();
     renderPersonOptions();
+    renderPersonFilter();
     clearForm();
     await loadItems();
   } catch (error) {
