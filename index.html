@@ -13,7 +13,10 @@
   <div class="app-shell">
     <header class="topbar">
       <h1 id="pageTitle">Family Calendar</h1>
-      <button id="homeAddBtn" class="btn btn-primary" type="button">Add item</button>
+      <div class="header-buttons">
+        <button id="homeAddBtn" class="btn btn-primary" type="button">Add item</button>
+        <button id="homeAddNoteBtn" class="btn btn-accent" type="button">Add Note</button>
+      </div>
     </header>
 
     <main>
@@ -34,6 +37,13 @@
         <div class="weekday-row" id="weekdayRow"></div>
         <div id="calendarGrid" class="calendar-grid"></div>
       </section>
+
+      <section id="notesIconsView" class="view notes-icons-section">
+        <div class="notes-icons-container">
+          <div id="notesIconsRow" class="notes-icons-row"></div>
+        </div>
+      </section>
+
 
       <section id="detailView" class="view hidden">
         <div class="card detail-card">
@@ -105,6 +115,48 @@
           <p id="formMessage" class="form-message" aria-live="polite"></p>
         </form>
       </section>
+
+      <section id="noteFormView" class="view hidden">
+        <form id="noteForm" class="card form-card">
+          <h2 id="noteFormTitle">Add Note</h2>
+
+          <label for="noteNumberSelect">Note Number</label>
+          <select id="noteNumberSelect" name="noteNumber" required>
+            <option value="">Select Note (1-7)</option>
+            <option value="1">Note 1</option>
+            <option value="2">Note 2</option>
+            <option value="3">Note 3</option>
+            <option value="4">Note 4</option>
+            <option value="5">Note 5</option>
+            <option value="6">Note 6</option>
+            <option value="7">Note 7</option>
+          </select>
+
+          <label for="noteTextInput">Note</label>
+          <textarea id="noteTextInput" name="noteText" rows="8" placeholder="Enter your note here..."></textarea>
+
+          <div class="form-actions">
+            <button id="noteSaveBackBtn" class="btn btn-primary" type="submit">Save and back to calendar</button>
+            <button id="noteSaveMoreBtn" class="btn btn-accent" type="button">Save and add more note</button>
+            <button id="noteCancelFormBtn" class="btn btn-ghost" type="button">Cancel</button>
+          </div>
+
+          <p id="noteFormMessage" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="noteDetailView" class="view hidden">
+        <div class="card detail-card">
+          <h2 id="noteDetailTitle">Note Details</h2>
+          <div id="noteDetailContainer"></div>
+          <div class="detail-actions">
+            <button id="noteDetailEditBtn" class="btn btn-accent" type="button">Edit</button>
+            <button id="noteDetailDeleteBtn" class="btn btn-danger" type="button">Delete</button>
+            <button id="backToCalendarFromNoteBtn" class="btn btn-primary" type="button">Back to calendar</button>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 

@@ -5,11 +5,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const state = {
   currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   items: [],
+  notes: [],
+  todoLists: [],
   persons: [],
   personThemeMap: new Map(),
   selectedItem: null,
+  selectedNote: null,
+  selectedTodoList: null,
   formMode: "add",
   editingRowId: null,
+  editingNoteId: null,
+  editingTodoId: null,
   selectedPersonFilter: "",
 };
 
@@ -18,6 +24,10 @@ const views = {
   detail: document.getElementById("detailView"),
   dayList: document.getElementById("dayListView"),
   form: document.getElementById("formView"),
+  noteForm: document.getElementById("noteFormView"),
+  noteDetail: document.getElementById("noteDetailView"),
+  todoListDetail: document.getElementById("todoListDetailView"),
+  todoForm: document.getElementById("todoFormView"),
 };
 
 const pageTitle = document.getElementById("pageTitle");
@@ -25,6 +35,8 @@ const monthLabel = document.getElementById("monthLabel");
 const weekdayRow = document.getElementById("weekdayRow");
 const calendarGrid = document.getElementById("calendarGrid");
 const homeAddBtn = document.getElementById("homeAddBtn");
+const homeAddNoteBtn = document.getElementById("homeAddNoteBtn");
+const homeAddTodoBtn = document.getElementById("homeAddTodoBtn");
 const prevMonthBtn = document.getElementById("prevMonthBtn");
 const nextMonthBtn = document.getElementById("nextMonthBtn");
 const backToCalendarBtn = document.getElementById("backToCalendarBtn");
@@ -32,6 +44,38 @@ const detailEditBtn = document.getElementById("detailEditBtn");
 const detailDeleteBtn = document.getElementById("detailDeleteBtn");
 const dayListBackBtn = document.getElementById("dayListBackBtn");
 const cancelFormBtn = document.getElementById("cancelFormBtn");
+
+// Note elements
+const noteFormEl = document.getElementById("noteForm");
+const noteFormTitle = document.getElementById("noteFormTitle");
+const noteNumberSelect = document.getElementById("noteNumberSelect");
+const noteTextInput = document.getElementById("noteTextInput");
+const noteSaveBackBtn = document.getElementById("noteSaveBackBtn");
+const noteSaveMoreBtn = document.getElementById("noteSaveMoreBtn");
+const noteCancelFormBtn = document.getElementById("noteCancelFormBtn");
+const noteFormMessage = document.getElementById("noteFormMessage");
+const noteDetailContainer = document.getElementById("noteDetailContainer");
+const noteDetailEditBtn = document.getElementById("noteDetailEditBtn");
+const noteDetailDeleteBtn = document.getElementById("noteDetailDeleteBtn");
+const backToCalendarFromNoteBtn = document.getElementById("backToCalendarFromNoteBtn");
+const notesIconsRow = document.getElementById("notesIconsRow");
+const todoListTitle = document.getElementById("todoListTitle");
+const todoListColumn1 = document.getElementById("todoListColumn1");
+const todoListColumn2 = document.getElementById("todoListColumn2");
+const todoListDetailContainer = document.getElementById("todoListDetailContainer");
+const backToCalendarFromTodoBtn = document.getElementById("backToCalendarFromTodoBtn");
+
+// Todo form elements
+const todoFormEl = document.getElementById("todoForm");
+const todoFormTitle = document.getElementById("todoFormTitle");
+const todoListNumberSelect = document.getElementById("todoListNumberSelect");
+const todoPersonSelect = document.getElementById("todoPersonSelect");
+const todoListNameInput = document.getElementById("todoListNameInput");
+const todoListDetailInput = document.getElementById("todoListDetailInput");
+const todoSaveBackBtn = document.getElementById("todoSaveBackBtn");
+const todoSaveMoreBtn = document.getElementById("todoSaveMoreBtn");
+const todoCancelFormBtn = document.getElementById("todoCancelFormBtn");
+const todoFormMessage = document.getElementById("todoFormMessage");
 
 const detailDate = document.getElementById("detailDate");
 const detailTime = document.getElementById("detailTime");
@@ -235,27 +279,66 @@ function itemsByDate() {
 
 function showView(name) {
   for (const [key, el] of Object.entries(views)) {
+    if (!el) {
+      continue;
+    }
     el.classList.toggle("hidden", key !== name);
   }
 
   if (name === "calendar") {
     pageTitle.textContent = "Family Calendar";
     homeAddBtn.classList.remove("hidden");
+    homeAddNoteBtn.classList.remove("hidden");
+    homeAddTodoBtn?.classList.remove("hidden");
   }
 
   if (name === "detail") {
     pageTitle.textContent = "Item Details";
     homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
   }
 
   if (name === "form") {
     pageTitle.textContent = "Add New Item";
     homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
   }
 
   if (name === "dayList") {
     pageTitle.textContent = "Day Items";
     homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
+  }
+
+  if (name === "noteForm") {
+    pageTitle.textContent = "Add Note";
+    homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
+  }
+
+  if (name === "noteDetail") {
+    pageTitle.textContent = "Note Details";
+    homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
+  }
+
+  if (name === "todoListDetail") {
+    pageTitle.textContent = "To Do List";
+    homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
+  }
+
+  if (name === "todoForm") {
+    pageTitle.textContent = "Add To do List";
+    homeAddBtn.classList.add("hidden");
+    homeAddNoteBtn.classList.add("hidden");
+    homeAddTodoBtn?.classList.add("hidden");
   }
 }
 
@@ -487,6 +570,34 @@ async function loadItems() {
   );
 }
 
+async function loadNotes() {
+  ensureSupabaseConfigured();
+  const { data, error } = await supabaseClient
+    .from("notes")
+    .select("id, note_number, person, note_text")
+    .order("note_number", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load notes. ${error.message}`);
+  }
+
+  state.notes = Array.isArray(data) ? data : [];
+}
+
+async function loadTodoLists() {
+  ensureSupabaseConfigured();
+  const { data, error } = await supabaseClient
+    .from("todo_lists")
+    .select("id, list_number, person, list_name, list_detail, is_completed")
+    .order("list_number", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load todo lists. ${error.message}`);
+  }
+
+  state.todoLists = Array.isArray(data) ? data : [];
+}
+
 async function saveItem(payload) {
   ensureSupabaseConfigured();
   const insertPayload = {
@@ -546,6 +657,129 @@ async function deleteItem(rowId) {
 
   if (error) {
     throw new Error(`Unable to delete item. ${error.message}`);
+  }
+}
+
+async function saveNote(payload) {
+  ensureSupabaseConfigured();
+  const { error } = await supabaseClient.from("notes").insert({
+    note_number: Number(payload.noteNumber),
+    person: "All",
+    note_text: safeString(payload.noteText),
+  });
+
+  if (error) {
+    throw new Error(`Unable to save note. ${error.message}`);
+  }
+}
+
+async function updateNote(payload) {
+  ensureSupabaseConfigured();
+  const noteId = Number(payload.noteId);
+  if (!Number.isFinite(noteId)) {
+    throw new Error("Invalid note ID.");
+  }
+
+  const { error } = await supabaseClient
+    .from("notes")
+    .update({
+      note_number: Number(payload.noteNumber),
+      person: "All",
+      note_text: safeString(payload.noteText),
+    })
+    .eq("id", noteId);
+
+  if (error) {
+    throw new Error(`Unable to update note. ${error.message}`);
+  }
+}
+
+async function deleteNote(noteId) {
+  ensureSupabaseConfigured();
+  const numericNoteId = Number(noteId);
+  if (!Number.isFinite(numericNoteId)) {
+    throw new Error("Invalid note ID.");
+  }
+
+  const { error } = await supabaseClient
+    .from("notes")
+    .delete()
+    .eq("id", numericNoteId);
+
+  if (error) {
+    throw new Error(`Unable to delete note. ${error.message}`);
+  }
+}
+
+async function saveTodoList(payload) {
+  ensureSupabaseConfigured();
+  const { error } = await supabaseClient.from("todo_lists").insert({
+    list_number: Number(payload.listNumber),
+    person: safeString(payload.todoListPerson),
+    list_name: safeString(payload.listName),
+    list_detail: safeString(payload.listDetail),
+    is_completed: Boolean(payload.isCompleted),
+  });
+
+  if (error) {
+    throw new Error(`Unable to save todo list. ${error.message}`);
+  }
+}
+
+async function updateTodoList(payload) {
+  ensureSupabaseConfigured();
+  const todoId = Number(payload.todoId);
+  if (!Number.isFinite(todoId)) {
+    throw new Error("Invalid todo list ID.");
+  }
+
+  const { error } = await supabaseClient
+    .from("todo_lists")
+    .update({
+      list_number: Number(payload.listNumber),
+      person: safeString(payload.todoListPerson),
+      list_name: safeString(payload.listName),
+      list_detail: safeString(payload.listDetail),
+      is_completed: Boolean(payload.isCompleted),
+    })
+    .eq("id", todoId);
+
+  if (error) {
+    throw new Error(`Unable to update todo list. ${error.message}`);
+  }
+}
+
+async function deleteTodoList(todoId) {
+  ensureSupabaseConfigured();
+  const numericTodoId = Number(todoId);
+  if (!Number.isFinite(numericTodoId)) {
+    throw new Error("Invalid todo list ID.");
+  }
+
+  const { error } = await supabaseClient
+    .from("todo_lists")
+    .delete()
+    .eq("id", numericTodoId);
+
+  if (error) {
+    throw new Error(`Unable to delete todo list. ${error.message}`);
+  }
+}
+
+async function toggleTodoCompletion(todoId, currentStatus) {
+  ensureSupabaseConfigured();
+  const numericTodoId = Number(todoId);
+  if (!Number.isFinite(numericTodoId)) {
+    throw new Error("Invalid todo list ID.");
+  }
+
+  const { error } = await supabaseClient
+    .from("todo_lists")
+    .update({ is_completed: !currentStatus })
+    .eq("id", numericTodoId);
+
+  if (error) {
+    throw new Error(`Unable to update todo list. ${error.message}`);
   }
 }
 
@@ -666,6 +900,522 @@ function setMessage(message, isError = false) {
   formMessage.style.color = isError ? "#b42318" : "#7a4f36";
 }
 
+function setNoteMessage(message, isError = false) {
+  noteFormMessage.textContent = message;
+  noteFormMessage.style.color = isError ? "#b42318" : "#7a4f36";
+}
+
+function clearNoteForm() {
+  noteFormEl.reset();
+  noteNumberSelect.value = "";
+  noteTextInput.value = "";
+  setNoteMessage("");
+}
+
+function fillNoteForm(note) {
+  noteNumberSelect.value = note.note_number || "";
+  noteTextInput.value = note.note_text || "";
+}
+
+function setNoteFormMode(mode) {
+  if (mode === "edit") {
+    noteFormTitle.textContent = "Edit Note";
+    noteSaveBackBtn.textContent = "Save changes and back";
+    noteSaveMoreBtn.classList.add("hidden");
+    return;
+  }
+
+  noteFormTitle.textContent = "Add Note";
+  noteSaveBackBtn.textContent = "Save and back to calendar";
+  noteSaveMoreBtn.classList.remove("hidden");
+}
+
+async function submitNoteForm(mode) {
+  const noteNumber = safeString(noteNumberSelect.value);
+  const noteText = safeString(noteTextInput.value);
+
+  if (!noteNumber) {
+    setNoteMessage("Please complete Note Number.", true);
+    return;
+  }
+
+  try {
+    setNoteMessage("Saving...");
+
+    if (state.editingNoteId) {
+      await updateNote({
+        noteId: state.editingNoteId,
+        noteNumber,
+        noteText,
+      });
+      await loadNotes();
+      renderNotesIcons();
+      showView("calendar");
+      return;
+    }
+
+    await saveNote({
+      noteNumber,
+      noteText,
+    });
+
+    if (mode === "back") {
+      await loadNotes();
+      renderNotesIcons();
+      showView("calendar");
+      return;
+    }
+
+    clearNoteForm();
+    setNoteMessage("Saved. You can add another note.");
+  } catch (error) {
+    setNoteMessage(error.message || "Save failed.", true);
+  }
+}
+
+async function openNoteForm() {
+  state.editingNoteId = null;
+  setNoteFormMode("add");
+  clearNoteForm();
+  showView("noteForm");
+}
+
+async function openNoteEditForm(note) {
+  state.editingNoteId = note.id;
+  setNoteFormMode("edit");
+  fillNoteForm(note);
+  showView("noteForm");
+}
+
+async function removeSelectedNote() {
+  if (!state.selectedNote) {
+    return;
+  }
+
+  const ok = confirm("Delete this note?");
+  if (!ok) {
+    return;
+  }
+
+  try {
+    await deleteNote(state.selectedNote.id);
+    await loadNotes();
+    renderNotesIcons();
+    showView("calendar");
+  } catch (error) {
+    alert(error.message || "Delete failed.");
+  }
+}
+
+function getNotesByNumber(noteNumber) {
+  const matches = state.notes.filter((note) => note.note_number === Number(noteNumber));
+  if (!matches.length) {
+    return [];
+  }
+  const preferred = matches.find((note) => safeString(note.person).toLowerCase() === "all");
+  return [preferred || matches[0]];
+}
+
+function hasNoteForNumber(noteNumber) {
+  return state.notes.some((note) => note.note_number === Number(noteNumber));
+}
+
+function renderNotesIcons() {
+  notesIconsRow.innerHTML = "";
+
+  for (let i = 1; i <= 7; i++) {
+    const hasNote = hasNoteForNumber(i);
+    const icon = document.createElement("div");
+    icon.className = `note-icon note-icon-${i} ${hasNote ? "note-active" : "note-inactive"}`;
+    icon.title = `Note ${i}`;
+    icon.textContent = `${i}`;
+
+    if (hasNote) {
+      icon.style.cursor = "pointer";
+      icon.addEventListener("click", () => {
+        showNoteDetail(i);
+      });
+    }
+
+    notesIconsRow.appendChild(icon);
+  }
+}
+
+function showNoteDetail(noteNumber) {
+  const allNotes = getNotesByNumber(noteNumber);
+
+  const detailHtml = document.createElement("div");
+  const section = document.createElement("div");
+  section.className = "note-detail-section";
+  const title = document.createElement("h3");
+  title.textContent = `Note ${noteNumber}`;
+  section.appendChild(title);
+
+  if (allNotes.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = "No note.";
+    section.appendChild(empty);
+    state.selectedNote = null;
+  } else {
+    for (const note of allNotes) {
+      const content = document.createElement("p");
+      content.textContent = note.note_text;
+      section.appendChild(content);
+    }
+    state.selectedNote = allNotes[0];
+  }
+
+  detailHtml.appendChild(section);
+
+  noteDetailContainer.innerHTML = "";
+  noteDetailContainer.appendChild(detailHtml);
+
+  const editBtn = noteDetailEditBtn;
+  const deleteBtn = noteDetailDeleteBtn;
+
+  editBtn.onclick = async () => {
+    if (!state.selectedNote) {
+      return;
+    }
+    try {
+      await openNoteEditForm(state.selectedNote);
+    } catch (error) {
+      alert(error.message || "Could not open edit form.");
+    }
+  };
+
+  deleteBtn.onclick = async () => {
+    await removeSelectedNote();
+  };
+
+  document.getElementById("noteDetailTitle").textContent = `Note ${noteNumber}`;
+  showView("noteDetail");
+}
+
+async function renderTodoLists() {
+  todoListColumn1.innerHTML = "";
+  todoListColumn2.innerHTML = "";
+
+  const filteredTodos = state.selectedPersonFilter
+    ? state.todoLists.filter((todo) => todo.person === "All" || todo.person === state.selectedPersonFilter)
+    : state.todoLists.filter((todo) => todo.person === "All");
+
+  for (let i = 0; i < filteredTodos.length; i++) {
+    const todo = filteredTodos[i];
+    const column = i < Math.ceil(filteredTodos.length / 2) ? todoListColumn1 : todoListColumn2;
+
+    const item = document.createElement("div");
+    item.className = "todo-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = todo.is_completed;
+    checkbox.className = "todo-checkbox";
+    checkbox.addEventListener("change", async () => {
+      try {
+        await toggleTodoCompletion(todo.id, todo.is_completed);
+        await loadTodoLists();
+        renderTodoLists();
+      } catch (error) {
+        alert(error.message || "Failed to update todo.");
+      }
+    });
+
+    const label = document.createElement("label");
+    label.className = "todo-label";
+    label.textContent = `List ${todo.list_number}: ${todo.list_name}`;
+    if (todo.is_completed) {
+      label.style.textDecoration = "line-through";
+      label.style.opacity = "0.6";
+    }
+
+    item.appendChild(checkbox);
+    item.appendChild(label);
+    column.appendChild(item);
+  }
+}
+
+async function openTodoListPage() {
+  await loadTodoLists();
+  renderTodoListDetail();
+  showView("todoListDetail");
+}
+
+function renderTodoListDetail() {
+  todoListDetailContainer.innerHTML = "";
+
+  const filteredTodos = state.selectedPersonFilter
+    ? state.todoLists.filter((todo) => todo.person === "All" || todo.person === state.selectedPersonFilter)
+    : state.todoLists.filter((todo) => todo.person === "All");
+
+  if (filteredTodos.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = "No to do lists.";
+    todoListDetailContainer.appendChild(empty);
+    return;
+  }
+
+  for (const todo of filteredTodos) {
+    const todoSection = document.createElement("div");
+    todoSection.className = "todo-detail-section";
+
+    const title = document.createElement("h3");
+    title.textContent = `List ${todo.list_number}: ${todo.list_name}`;
+    todoSection.appendChild(title);
+
+    const detail = document.createElement("p");
+    detail.textContent = todo.list_detail;
+    todoSection.appendChild(detail);
+
+    const status = document.createElement("p");
+    status.textContent = todo.is_completed ? "✓ Completed" : "○ Pending";
+    status.style.fontWeight = "bold";
+    todoSection.appendChild(status);
+
+    const actions = document.createElement("div");
+    actions.className = "todo-detail-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn btn-accent";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", async () => {
+      state.selectedTodoList = todo;
+      await openTodoListEditForm(todo);
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn btn-danger";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", async () => {
+      state.selectedTodoList = todo;
+      await removeSelectedTodoList();
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+    todoSection.appendChild(actions);
+
+    todoListDetailContainer.appendChild(todoSection);
+  }
+}
+
+function setTodoFormMode(mode) {
+  if (mode === "edit") {
+    todoFormTitle.textContent = "Edit To do List";
+    todoSaveBackBtn.textContent = "Save changes and back";
+    todoSaveMoreBtn.classList.add("hidden");
+    todoListNumberSelect.disabled = false;
+    return;
+  }
+
+  todoFormTitle.textContent = "Add To do List";
+  todoSaveBackBtn.textContent = "Save and back to calendar";
+  todoSaveMoreBtn.classList.remove("hidden");
+  todoListNumberSelect.disabled = false;
+}
+
+function clearTodoForm() {
+  todoFormEl.reset();
+  todoListNumberSelect.value = "";
+  todoListNumberSelect.disabled = false;
+  todoPersonSelect.value = "";
+  todoPersonSelect.disabled = true;
+  todoListNameInput.value = "";
+  todoListNameInput.disabled = true;
+  todoListDetailInput.value = "";
+  todoListDetailInput.disabled = true;
+  todoFormMessage.textContent = "";
+}
+
+function enableTodoPersonField() {
+  todoPersonSelect.disabled = false;
+}
+
+function enableTodoDetailFields() {
+  todoListNameInput.disabled = false;
+  todoListDetailInput.disabled = false;
+}
+
+function disableTodoFormFields() {
+  todoPersonSelect.disabled = true;
+  todoListNameInput.disabled = true;
+  todoListDetailInput.disabled = true;
+}
+
+function renderTodoPersonSelect() {
+  todoPersonSelect.innerHTML = '<option value="">Select Person</option>';
+
+  const selectablePersons = state.persons.filter(
+    (row) => safeString(row.person).toLowerCase() !== "default"
+  );
+
+  for (const row of selectablePersons) {
+    const option = document.createElement("option");
+    option.value = row.person;
+    option.textContent = row.person;
+    todoPersonSelect.appendChild(option);
+  }
+
+  const allOption = document.createElement("option");
+  allOption.value = "All";
+  allOption.textContent = "All (for all persons)";
+  todoPersonSelect.appendChild(allOption);
+}
+
+function fillTodoForm(todo) {
+  todoListNumberSelect.value = todo.list_number || "";
+  todoPersonSelect.value = todo.person || "";
+  todoListNameInput.value = todo.list_name || "";
+  todoListDetailInput.value = todo.list_detail || "";
+}
+
+function setTodoMessage(message, isError = false) {
+  todoFormMessage.textContent = message;
+  todoFormMessage.style.color = isError ? "#b42318" : "#7a4f36";
+}
+
+function findExistingTodoBySelection() {
+  const selectedListNumber = Number(safeString(todoListNumberSelect.value));
+  const selectedPerson = safeString(todoPersonSelect.value).toLowerCase();
+  if (!Number.isFinite(selectedListNumber) || !selectedPerson) {
+    return null;
+  }
+
+  return (
+    state.todoLists.find(
+      (todo) =>
+        Number(todo.list_number) === selectedListNumber &&
+        safeString(todo.person).toLowerCase() === selectedPerson
+    ) || null
+  );
+}
+
+function applyTodoPrefillForSelection() {
+  const selectedListNumber = safeString(todoListNumberSelect.value);
+  const selectedPerson = safeString(todoPersonSelect.value);
+
+  if (!selectedListNumber) {
+    disableTodoFormFields();
+    todoPersonSelect.value = "";
+    todoListNameInput.value = "";
+    todoListDetailInput.value = "";
+    return;
+  }
+
+  enableTodoPersonField();
+
+  if (!selectedPerson) {
+    todoListNameInput.value = "";
+    todoListDetailInput.value = "";
+    todoListNameInput.disabled = true;
+    todoListDetailInput.disabled = true;
+    return;
+  }
+
+  enableTodoDetailFields();
+  const existingTodo = findExistingTodoBySelection();
+  if (existingTodo) {
+    todoListNameInput.value = safeString(existingTodo.list_name);
+    todoListDetailInput.value = safeString(existingTodo.list_detail);
+  } else {
+    todoListNameInput.value = "";
+    todoListDetailInput.value = "";
+  }
+}
+
+async function submitTodoForm(mode) {
+  const listNumber = safeString(todoListNumberSelect.value);
+  const todoPerson = safeString(todoPersonSelect.value);
+  const listName = safeString(todoListNameInput.value);
+  const listDetail = safeString(todoListDetailInput.value);
+
+  if (!listNumber || !todoPerson || !listName) {
+    setTodoMessage("Please complete List Number, Person, and List Name.", true);
+    return;
+  }
+
+  try {
+    setTodoMessage("Saving...");
+
+    if (state.editingTodoId) {
+      await updateTodoList({
+        todoId: state.editingTodoId,
+        listNumber,
+        todoListPerson: todoPerson,
+        listName,
+        listDetail,
+        isCompleted: false,
+      });
+      await loadTodoLists();
+      renderTodoLists();
+      showView("calendar");
+      return;
+    }
+
+    await saveTodoList({
+      listNumber,
+      todoListPerson: todoPerson,
+      listName,
+      listDetail,
+      isCompleted: false,
+    });
+
+    if (mode === "back") {
+      await loadTodoLists();
+      renderTodoLists();
+      showView("calendar");
+      return;
+    }
+
+    clearTodoForm();
+    setTodoMessage("Saved. You can add another to do list.");
+  } catch (error) {
+    setTodoMessage(error.message || "Save failed.", true);
+  }
+}
+
+async function openTodoForm() {
+  state.editingTodoId = null;
+  setTodoFormMode("add");
+  await loadPersons();
+  renderTodoPersonSelect();
+  clearTodoForm();
+  showView("todoForm");
+}
+
+async function removeSelectedTodoList() {
+  if (!state.selectedTodoList) {
+    return;
+  }
+
+  const ok = confirm("Delete this to do list?");
+  if (!ok) {
+    return;
+  }
+
+  try {
+    await deleteTodoList(state.selectedTodoList.id);
+    await loadTodoLists();
+    renderTodoListDetail();
+  } catch (error) {
+    alert(error.message || "Delete failed.");
+  }
+}
+
+async function openTodoListEditForm(todo) {
+  state.editingTodoId = todo.id;
+  setTodoFormMode("edit");
+  await loadPersons();
+  renderTodoPersonSelect();
+  clearTodoForm();
+
+  // In edit mode, user starts by selecting list number, then person.
+  todoListNumberSelect.value = todo.list_number;
+  applyTodoPrefillForSelection();
+
+  showView("todoForm");
+}
+
 async function openForm() {
   state.editingRowId = null;
   setFormMode("add");
@@ -761,6 +1511,14 @@ function registerEvents() {
     }
   });
 
+  homeAddNoteBtn.addEventListener("click", async () => {
+    try {
+      await openNoteForm();
+    } catch (error) {
+      setNoteMessage(error.message || "Could not load person options.", true);
+    }
+  });
+
   prevMonthBtn.addEventListener("click", () => {
     state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() - 1, 1);
     renderCalendar();
@@ -774,6 +1532,7 @@ function registerEvents() {
   personFilterSelect.addEventListener("change", (event) => {
     state.selectedPersonFilter = event.target.value;
     renderCalendar();
+    renderNotesIcons();
   });
 
   backToCalendarBtn.addEventListener("click", () => {
@@ -823,6 +1582,25 @@ function registerEvents() {
       event.target.value = defaultHourTime();
     }
   });
+
+  // Note form events
+  noteFormEl.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitNoteForm("back");
+  });
+
+  noteSaveMoreBtn.addEventListener("click", async () => {
+    await submitNoteForm("more");
+  });
+
+  noteCancelFormBtn.addEventListener("click", () => {
+    showView("calendar");
+  });
+
+  backToCalendarFromNoteBtn.addEventListener("click", () => {
+    showView("calendar");
+  });
+
 }
 
 async function init() {
@@ -836,11 +1614,13 @@ async function init() {
     renderPersonFilter();
     clearForm();
     await loadItems();
+    await loadNotes();
   } catch (error) {
     setMessage(`Could not load data: ${error.message}`, true);
   }
 
   renderCalendar();
+  renderNotesIcons();
   showView("calendar");
 }
 
