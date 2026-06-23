@@ -1,11 +1,6 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzyfLw3h84nNntWPeYkZoszljxBDTLf1GUip9e6njKOJC8Wcz1GHR5iwr11CrNLmm1M/exec";
-const API_ACTIONS = {
-  list: "list",
-  persons: "persons",
-  add: "add",
-  update: "update",
-  delete: "delete",
-};
+const SUPABASE_URL = window.SUPABASE_CONFIG?.url || "";
+const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG?.anonKey || "";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const state = {
   currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -138,10 +133,10 @@ function normalizeItem(row) {
   return { rowId, date, time, item, description, person, dateTo, timeTo };
 }
 
-function buildApiUrl(action) {
-  const url = new URL(API_URL);
-  url.searchParams.set("action", action);
-  return url.toString();
+function ensureSupabaseConfigured() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error("Supabase is not configured. Update supabase-config.js.");
+  }
 }
 
 function getThemeByPerson(personName) {
@@ -434,18 +429,16 @@ function toPayload(formData) {
 }
 
 async function loadPersons() {
-  const url = buildApiUrl(API_ACTIONS.persons);
-  const response = await fetch(url, {
-    method: "GET",
-    mode: "cors",
-    credentials: "omit",
-  });
+  ensureSupabaseConfigured();
+  const { data, error } = await supabaseClient
+    .from("persons")
+    .select("person, color_theme")
+    .order("id", { ascending: true });
 
-  if (!response.ok) {
-    throw new Error(`Failed to load persons. HTTP ${response.status}`);
+  if (error) {
+    throw new Error(`Failed to load persons. ${error.message}`);
   }
 
-  const data = await response.json();
   if (!Array.isArray(data)) {
     state.persons = [];
     state.personThemeMap = new Map();
@@ -455,7 +448,7 @@ async function loadPersons() {
   const persons = data
     .map((row) => ({
       person: safeString(row.person),
-      colorTheme: safeString(row.colorTheme),
+      colorTheme: safeString(row.color_theme),
     }))
     .filter((row) => row.person);
 
@@ -464,70 +457,96 @@ async function loadPersons() {
 }
 
 async function loadItems() {
-  try {
-    const url = buildApiUrl(API_ACTIONS.list);
-    console.log("Loading items from:", url);
-    const response = await fetch(url, {
-      method: "GET",
-      mode: "cors",
-      credentials: "omit",
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to load items. HTTP ${response.status}`);
-    }
+  ensureSupabaseConfigured();
+  const { data, error } = await supabaseClient
+    .from("calendar_items")
+    .select("id, date, time, item, description, person, date_to, time_to")
+    .order("date", { ascending: true })
+    .order("time", { ascending: true, nullsFirst: true });
 
-    const data = await response.json();
-    console.log("Loaded data:", data);
-    if (!Array.isArray(data)) {
-      state.items = [];
-      return;
-    }
-
-    state.items = data.map(normalizeItem);
-  } catch (error) {
-    console.error("Error loading items:", error);
-    throw error;
+  if (error) {
+    throw new Error(`Failed to load items. ${error.message}`);
   }
-}
 
-async function postAction(action, payload) {
-  try {
-    const url = buildApiUrl(action);
-    console.log("Posting action:", action, "to:", url, "payload:", payload);
-    const response = await fetch(url, {
-      method: "POST",
-      mode: "cors",
-      credentials: "omit",
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Save failed. HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log("Response:", result);
-    if (result.status !== "ok") {
-      throw new Error(result.message || "Unable to save item");
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Error in postAction:", error);
-    throw error;
+  if (!Array.isArray(data)) {
+    state.items = [];
+    return;
   }
+
+  state.items = data.map((row) =>
+    normalizeItem({
+      rowId: row.id,
+      date: row.date,
+      time: row.time,
+      item: row.item,
+      description: row.description,
+      person: row.person,
+      dateTo: row.date_to,
+      timeTo: row.time_to,
+    })
+  );
 }
 
 async function saveItem(payload) {
-  return postAction(API_ACTIONS.add, payload);
+  ensureSupabaseConfigured();
+  const insertPayload = {
+    date: safeString(payload.date),
+    time: safeString(payload.time) || null,
+    item: safeString(payload.item),
+    description: safeString(payload.description),
+    person: safeString(payload.person),
+    date_to: safeString(payload.dateTo) || null,
+    time_to: safeString(payload.timeTo) || null,
+  };
+
+  const { error } = await supabaseClient.from("calendar_items").insert(insertPayload);
+  if (error) {
+    throw new Error(`Unable to save item. ${error.message}`);
+  }
 }
 
 async function updateItem(payload) {
-  return postAction(API_ACTIONS.update, payload);
+  ensureSupabaseConfigured();
+  const rowId = Number(payload.rowId);
+  if (!Number.isFinite(rowId)) {
+    throw new Error("Invalid rowId.");
+  }
+
+  const updatePayload = {
+    date: safeString(payload.date),
+    time: safeString(payload.time) || null,
+    item: safeString(payload.item),
+    description: safeString(payload.description),
+    person: safeString(payload.person),
+    date_to: safeString(payload.dateTo) || null,
+    time_to: safeString(payload.timeTo) || null,
+  };
+
+  const { error } = await supabaseClient
+    .from("calendar_items")
+    .update(updatePayload)
+    .eq("id", rowId);
+
+  if (error) {
+    throw new Error(`Unable to update item. ${error.message}`);
+  }
 }
 
 async function deleteItem(rowId) {
-  return postAction(API_ACTIONS.delete, { rowId });
+  ensureSupabaseConfigured();
+  const numericRowId = Number(rowId);
+  if (!Number.isFinite(numericRowId)) {
+    throw new Error("Invalid rowId.");
+  }
+
+  const { error } = await supabaseClient
+    .from("calendar_items")
+    .delete()
+    .eq("id", numericRowId);
+
+  if (error) {
+    throw new Error(`Unable to delete item. ${error.message}`);
+  }
 }
 
 function clearForm() {
